@@ -3,7 +3,7 @@
 import { abi } from "@/contracts/RPSLS";
 import Link from "next/link";
 import { useState } from "react";
-import { useTransactionReceipt, useWriteContract } from "wagmi";
+import { useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import TimeoutButton from "../TimeoutButton";
 import MoveInput from "../MoveInput";
 import { useResponseValues } from "@/hooks/useResponseValues";
@@ -18,9 +18,22 @@ export default function EndGameForm({ contractAddress, address }: Props) {
   const [error, setError] = useState(false);
   const { isLoading, isError, stake, move2, lastDate, isTimeout, refetch } =
     useResponseValues(contractAddress);
-  const { writeContract } = useWriteContract();
+  const { status: contractStatus, writeContract } = useWriteContract();
   const [hash, setHash] = useState<`0x${string}` | undefined>();
-  const { data: transactionReceipt } = useTransactionReceipt({ hash });
+  const {
+    data: txReceipt,
+    status: txStatus,
+    fetchStatus: txFetchStatus,
+  } = useWaitForTransactionReceipt({
+    hash,
+    query: {
+      enabled: !!hash,
+    },
+  });
+  const isPending =
+    contractStatus === "pending" ||
+    (txStatus === "pending" && contractStatus !== "idle") ||
+    txFetchStatus === "fetching";
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -54,7 +67,7 @@ export default function EndGameForm({ contractAddress, address }: Props) {
     return <span>Loading...</span>;
   }
 
-  if (transactionReceipt || stake === BigInt(0)) {
+  if (txReceipt || stake === BigInt(0)) {
     return (
       <div className="flex flex-col border gap-2 p-8">
         <h2>Game over</h2>
@@ -95,8 +108,12 @@ export default function EndGameForm({ contractAddress, address }: Props) {
           defaultValue={salt ?? undefined}
         />
       </label>
-      <button className="w-fit rounded mt-4 border p-2 shadow-sm" type="submit">
-        Finish game
+      <button
+        className="w-fit rounded mt-4 border p-2 shadow-sm"
+        type="submit"
+        disabled={isPending}
+      >
+        {!isPending ? "Finish game" : "Finishing game..."}
       </button>
       {(error || isError) && (
         <span className="text-red-600">There was an error</span>

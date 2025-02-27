@@ -28,11 +28,6 @@ export default function MainScreen() {
     address: contractAddress,
     functionName: "player2",
   });
-  const { data: move2, isLoading: move2Loading } = useReadContract({
-    abi,
-    address: contractAddress,
-    functionName: "move2",
-  });
   const chainId = useChainId();
 
   useEffect(() => {
@@ -77,12 +72,8 @@ export default function MainScreen() {
   }
 
   if (!!contractAddress) {
-    if (player1Loading || player2Loading || move2Loading) {
+    if (player1Loading || player2Loading) {
       return <span>Loading...</span>;
-    }
-
-    if (account.address === player2 && move2 === 0) {
-      return <OpponentSection contractAddress={contractAddress} />;
     }
 
     if (account.address === player1) {
@@ -92,6 +83,10 @@ export default function MainScreen() {
           address={account.address}
         />
       );
+    }
+
+    if (account.address === player2) {
+      return <OpponentSection contractAddress={contractAddress} />;
     }
   }
 

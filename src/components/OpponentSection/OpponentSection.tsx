@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useTransactionReceipt } from "wagmi";
+import { useWaitForTransactionReceipt } from "wagmi";
 import OpponentForm from "./OpponentForm";
 import TimeoutButton from "../TimeoutButton";
 import { useResponseValues } from "@/hooks/useResponseValues";
@@ -13,7 +13,16 @@ type Props = {
 
 export default function OpponentSection({ contractAddress }: Props) {
   const [hash, setHash] = useState<`0x${string}` | undefined>();
-  const { data } = useTransactionReceipt({ hash });
+  const {
+    data,
+    status: txStatus,
+    fetchStatus: txFetchStatus,
+  } = useWaitForTransactionReceipt({
+    hash,
+    query: {
+      enabled: !!hash,
+    },
+  });
   const { isLoading, isError, stake, move2, lastDate, isTimeout, refetch } =
     useResponseValues(contractAddress);
 
@@ -60,6 +69,8 @@ export default function OpponentSection({ contractAddress }: Props) {
         contractAddress={contractAddress}
         setHash={setHash}
         value={stake}
+        txFetchStatus={txFetchStatus}
+        txStatus={txStatus}
       />
       {isError && <span className="text-red-600">There was an error</span>}
     </>

@@ -5,7 +5,7 @@ import { getSalt } from "@/utils/utils";
 import Link from "next/link";
 import { useState } from "react";
 import { encodePacked, keccak256, parseEther } from "viem";
-import { useDeployContract, useTransactionReceipt } from "wagmi";
+import { useDeployContract, useWaitForTransactionReceipt } from "wagmi";
 import MoveInput from "../MoveInput";
 
 type Props = {
@@ -16,9 +16,22 @@ export default function ChallengeForm({ address }: Props) {
   const [error, setError] = useState(false);
   const [salt, setSalt] = useState<bigint | undefined>();
   const [challenged, setChallenged] = useState("");
-  const { deployContract } = useDeployContract();
+  const { status: contractStatus, deployContract } = useDeployContract();
   const [hash, setHash] = useState<`0x${string}` | undefined>();
-  const { data } = useTransactionReceipt({ hash });
+  const {
+    data: txReceipt,
+    status: txStatus,
+    fetchStatus: txFetchStatus,
+  } = useWaitForTransactionReceipt({
+    hash,
+    query: {
+      enabled: !!hash,
+    },
+  });
+  const isPending =
+    contractStatus === "pending" ||
+    (txStatus === "pending" && contractStatus === "success") ||
+    txFetchStatus === "fetching";
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,7 +68,7 @@ export default function ChallengeForm({ address }: Props) {
     }
   };
 
-  if (data) {
+  if (txReceipt) {
     return (
       <div className="flex flex-col border gap-2 p-8">
         <h2>{`You just challenged ${challenged}`}</h2>
@@ -72,9 +85,9 @@ export default function ChallengeForm({ address }: Props) {
         <p>
           Send your opponent this link for them to make their move:{" "}
           <Link
-            href={`${window.location.origin}?contract=${data.contractAddress}`}
+            href={`${window.location.origin}?contract=${txReceipt.contractAddress}`}
             className="whitespace-nowrap underline"
-          >{`${window.location.origin}?contract=${data.contractAddress}`}</Link>
+          >{`${window.location.origin}?contract=${txReceipt.contractAddress}`}</Link>
         </p>
       </div>
     );
@@ -95,7 +108,7 @@ export default function ChallengeForm({ address }: Props) {
           name="opponent"
           placeholder="0xA0Cf…251e"
           required
-          className="text-black min-w-[380px]"
+          className="text-black border min-w-[380px]"
         />
       </label>
       <label className="flex justify-between w-full">
@@ -104,12 +117,16 @@ export default function ChallengeForm({ address }: Props) {
           name="value"
           placeholder="0.05"
           required
-          className="text-black "
+          className="text-black border"
         />
       </label>
       <MoveInput />
-      <button className="w-fit rounded mt-4 border p-2 shadow-sm" type="submit">
-        Deploy
+      <button
+        className="w-fit rounded mt-4 border p-2 shadow-sm"
+        type="submit"
+        disabled={isPending}
+      >
+        {!isPending ? "Deploy" : "Deploying..."}
       </button>
       {error && <span className="text-red-600">There was an error</span>}
     </form>
