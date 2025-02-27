@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+new-component.sh
 
 # debug
 npm-debug.log*
